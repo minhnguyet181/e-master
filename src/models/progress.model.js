@@ -4,6 +4,7 @@ class Progress extends Model {}
 Progress.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   progress: { type: DataTypes.INTEGER, defaultValue: 0 }
-}, { sequelize, modelName: 'Progress', tableName: 'progress', timestamps: true });
+}, 
+{ sequelize, modelName: 'Progress', tableName: 'progress', timestamps: true });
 
 module.exports = Progress;

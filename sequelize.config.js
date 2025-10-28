@@ -1,4 +1,3 @@
-// sequelize.config.js
 require('dotenv').config();
 
 module.exports = {
@@ -10,6 +9,12 @@ module.exports = {
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
     logging: false,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false, 
+      },
+    },
   },
   production: {
     username: process.env.DB_USER,
@@ -19,5 +24,11 @@ module.exports = {
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
     logging: false,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
   },
 };

@@ -8,6 +8,7 @@ Question.init({
   correct_answer: { type: DataTypes.STRING(255), allowNull: true },
   points: { type: DataTypes.INTEGER, allowNull: true },
   hint: { type: DataTypes.TEXT, allowNull: true }
-}, { sequelize, modelName: 'Question', tableName: 'questions', timestamps: true });
+}, 
+{ sequelize, modelName: 'Question', tableName: 'questions', timestamps: true });
 
 module.exports = Question;

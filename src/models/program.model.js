@@ -5,6 +5,7 @@ Program.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   name: { type: DataTypes.STRING(255), allowNull: false },
   description: { type: DataTypes.TEXT }
-}, { sequelize, modelName: 'Program', tableName: 'programs', timestamps: true });
+}, 
+{ sequelize, modelName: 'Program', tableName: 'programs', timestamps: true });
 
 module.exports = Program;

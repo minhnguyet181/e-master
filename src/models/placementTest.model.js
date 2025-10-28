@@ -5,6 +5,7 @@ PlacementTest.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   title: { type: DataTypes.STRING(255) },
   description: { type: DataTypes.TEXT }
-}, { sequelize, modelName: 'PlacementTest', tableName: 'placement_tests', timestamps: true });
+}, 
+{ sequelize, modelName: 'PlacementTest', tableName: 'placement_tests', timestamps: true });
 
 module.exports = PlacementTest;
