@@ -2,9 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('./src/config/db');
+const routes = require('./src/routes');
 
-const authRoutes = require('./src/routes/auth.routes');
-const userRoutes = require('./src/routes/user.routes');
 
 const app = express();
 const url = process.env.FRONTEND_URL;
@@ -15,8 +14,7 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use('/e-master', authRoutes);
-app.use('/e-master', userRoutes);
+app.use('/e-master', routes);
 
 sequelize.sync()
   .then(() => {

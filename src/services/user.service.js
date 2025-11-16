@@ -1,12 +1,44 @@
+// src/services/user.service.js
 const User = require('../models/user.model');
+const AiService = require('./ai.service');
 
-class UserService {
-  static async updateProfile(userId, data) {
-    const user = await User.findByPk(userId);
-    if (!user) throw new Error('User not found');
-    await user.update(data);
-    return user;
-  }
+async function getById(id) {
+  return User.findByPk(id);
 }
 
-module.exports = UserService;
+async function updateProfile(userId, payload) {
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error('User not found');
+
+  const allowed = ['username', 'goal', 'band_target', 'study_hours_per_day', 'reason', 'ai_recommendation'];
+  const updates = {};
+  allowed.forEach(k => { if (payload[k] !== undefined) updates[k] = payload[k]; });
+
+  await user.update(updates);
+  return user.reload();
+}
+
+async function submitLearningGoalGenerateAI(userId, input) {
+  // input: { learningGoal, currentBand, targetBand, dailyStudyHours, learningPurpose }
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error('User not found');
+
+  const aiResult = await AiService.generateLearningPlan({
+    learningGoal: input.learningGoal || input.goal || user.goal,
+    currentBand: input.currentBand || null,
+    targetBand: input.targetBand || input.band_target || user.band_target,
+    dailyStudyHours: input.dailyStudyHours || input.study_hours_per_day || user.study_hours_per_day,
+    learningPurpose: input.learningPurpose || input.reason || user.reason
+  });
+
+  // Save stringified JSON for record
+  await user.update({ ai_recommendation: typeof aiResult === 'string' ? aiResult : JSON.stringify(aiResult) });
+
+  return aiResult;
+}
+
+module.exports = {
+  getById,
+  updateProfile,
+  submitLearningGoalGenerateAI
+};

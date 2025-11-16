@@ -1,62 +1,75 @@
+// src/services/auth.service.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/user.model');
+const TokenBlacklist = require('../models/tokenBlacklist.model');
 
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_EXPIRES = process.env.JWT_EXPIRES_IN || '7d';
 
-class AuthService {
-  static async register({ username, email, password }) {
-    const existing = await User.findOne({ where: { email } });
-    if (existing) throw new Error('Email already exists');
-
-    const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, password: hashed });
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-    return { user, token };
-  }
-
-  static async login({ email, password }) {
-    const user = await User.findOne({ where: { email } });
-    if (!user) throw new Error('User not found');
-
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) throw new Error('Invalid password');
-
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    return { user, token };
-  }
-
-  static async googleAuth(idToken) {
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-    let user = await User.findOne({ where: { email: payload.email } });
-
-    if (!user) {
-      user = await User.create({
-        username: payload.name,
-        email: payload.email,
-        googleId: payload.sub,
-      });
-    }
-
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    return { user, token };
-  }
-
-  static async logout() {
-    return { message: 'Logged out successfully' };
-  }
-
-  static async getCurrentUser(userId) {
-    const user = await User.findByPk(userId);
-    if (!user) throw new Error('User not found');
-    return user;
-  }
+function signToken(user) {
+  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 }
 
-module.exports = AuthService;
+async function register({ username, email, password }) {
+  const existing = await User.findOne({ where: { email } });
+  if (existing) throw new Error('Email already registered');
+
+  const hashed = await bcrypt.hash(password, 10);
+  const user = await User.create({ username, email, password: hashed });
+  const token = signToken(user);
+  return { user, token };
+}
+
+async function login({ email, password }) {
+  const user = await User.findOne({ where: { email } });
+  if (!user) throw new Error('Invalid credentials');
+  if (!user.password) throw new Error('Account registered without password. Use Google login.');
+
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) throw new Error('Invalid credentials');
+
+  const token = signToken(user);
+  return { user, token };
+}
+
+async function googleLogin({ googleId, email, username }) {
+  let user = await User.findOne({ where: { googleId } });
+  if (!user) {
+    user = await User.findOne({ where: { email } });
+    if (!user) {
+      user = await User.create({ username, email, googleId, password: null });
+    } else {
+      await user.update({ googleId });
+    }
+  }
+  const token = signToken(user);
+  return { user, token };
+}
+
+async function logout(token) {
+  if (!token) throw new Error('No token provided');
+  // decode expiry
+  let exp = null;
+  try {
+    const decoded = jwt.decode(token);
+    if (decoded && decoded.exp) exp = new Date(decoded.exp * 1000);
+  } catch (e) { /* ignore */ }
+  await TokenBlacklist.create({ token, expires_at: exp });
+  return true;
+}
+
+async function isBlacklisted(token) {
+  if (!token) return false;
+  const found = await TokenBlacklist.findOne({ where: { token } });
+  return !!found;
+}
+
+module.exports = {
+  register,
+  login,
+  googleLogin,
+  logout,
+  signToken,
+  isBlacklisted,
+};
