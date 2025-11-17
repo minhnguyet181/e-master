@@ -15,4 +15,3 @@ module.exports = function authenticate(req, res, next) {
     res.status(403).json({ message: 'Invalid or expired token' });
   }
 };
-s

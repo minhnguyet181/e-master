@@ -16,4 +16,3 @@ exports.weeklyReminder = async (req, res) => {
     handleError(res, err);
   }
 };
-s

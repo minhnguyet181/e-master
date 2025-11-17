@@ -178,5 +178,6 @@ module.exports = {
   gradeWriting,
   gradeSpeaking,
   chatAssistant,
-  transcribeAudioHF
+  transcribeAudioHF,
+  callGemini // Export để dùng trong placementTest.service.js
 };

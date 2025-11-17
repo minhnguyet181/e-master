@@ -2,7 +2,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
-const TokenBlacklist = require('../models/tokenBlacklist.model');
+const TokenBlocklist = require('../models/tokenBlocklist.model');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 const JWT_EXPIRES = process.env.JWT_EXPIRES_IN || '7d';
@@ -49,19 +49,13 @@ async function googleLogin({ googleId, email, username }) {
 
 async function logout(token) {
   if (!token) throw new Error('No token provided');
-  // decode expiry
-  let exp = null;
-  try {
-    const decoded = jwt.decode(token);
-    if (decoded && decoded.exp) exp = new Date(decoded.exp * 1000);
-  } catch (e) { /* ignore */ }
-  await TokenBlacklist.create({ token, expires_at: exp });
+  await TokenBlocklist.create({ token });
   return true;
 }
 
 async function isBlacklisted(token) {
   if (!token) return false;
-  const found = await TokenBlacklist.findOne({ where: { token } });
+  const found = await TokenBlocklist.findOne({ where: { token } });
   return !!found;
 }
 
