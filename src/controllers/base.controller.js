@@ -1,4 +1,3 @@
-// src/controllers/base.controller.js
 exports.handleResponse = (res, data, message = 'Success') => {
   res.status(200).json({ success: true, message, data });
 };

@@ -2,7 +2,7 @@ const express = require('express');
 const AuthController = require('../controllers/auth.controller');
 const router = express.Router();
 
-router.post('/signup', AuthController.register);
+router.post('/register', AuthController.register);
 router.post('/login', AuthController.login);
 router.post('/google-auth', AuthController.googleLogin);
 router.post('/logout', AuthController.logout);

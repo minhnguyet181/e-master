@@ -1,6 +1,7 @@
 // src/services/auth.service.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
 const User = require('../models/user.model');
 const TokenBlocklist = require('../models/tokenBlocklist.model');
 
@@ -21,15 +22,48 @@ async function register({ username, email, password }) {
   return { user, token };
 }
 
-async function login({ email, password }) {
-  const user = await User.findOne({ where: { email } });
-  if (!user) throw new Error('Invalid credentials');
-  if (!user.password) throw new Error('Account registered without password. Use Google login.');
+async function login({ email, username, password }) {
+  // Allow login by either email or username
+  // Smart detection: if email field looks like username (no @), use as username
+  let loginIdentifier = email || username;
+  
+  if (!loginIdentifier) throw new Error('Email or username is required');
+  if (!password) throw new Error('Password is required');
 
+  console.log('🔐 Auth.login called with:', { loginIdentifier, hasAt: loginIdentifier.includes('@') });
+
+  // Detect if identifier is email (contains @) or username
+  const isEmailFormat = loginIdentifier.includes('@');
+  
+  const whereCondition = isEmailFormat 
+    ? { email: loginIdentifier }
+    : { username: loginIdentifier };
+
+  const user = await User.findOne({ where: whereCondition });
+
+  console.log('🔍 User lookup result:', { found: !!user, username: user?.username, email: user?.email });
+
+  if (!user) {
+    console.error('❌ User not found with:', whereCondition);
+    throw new Error('Invalid credentials');
+  }
+  
+  if (!user.password) {
+    console.error('❌ User has no password hash:', user.id);
+    throw new Error('Account registered without password. Use Google login.');
+  }
+
+  console.log('🔑 Comparing password...');
   const ok = await bcrypt.compare(password, user.password);
-  if (!ok) throw new Error('Invalid credentials');
+  console.log('🔐 Password match result:', ok);
+
+  if (!ok) {
+    console.error('❌ Password mismatch for user:', user.id);
+    throw new Error('Invalid credentials');
+  }
 
   const token = signToken(user);
+  console.log('✅ Login successful, token generated for user:', user.id);
   return { user, token };
 }
 

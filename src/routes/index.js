@@ -13,18 +13,19 @@ const reminderRoutes = require('./reminder.routes');
 const placementTestRoutes = require('./placementTest.routes');
 const resourceRoutes = require('./resource.routes');
 const studyRequirementRoutes = require('./studyRequirement.routes');
+const studyPlanRoutes = require('./studyPlan.routes');
 
-// Gắn prefix cho từng nhóm API
-router.use('/auth', authRoutes);
-router.use('/user', userRoutes);
-router.use('/ai', aiRoutes);
-router.use('/test', testRoutes);
-router.use('/submission', submissionRoutes);
-router.use('/progress', progressRoutes);
-router.use('/reminder', reminderRoutes);
-router.use('/', placementTestRoutes); // /e-master/placement-test/...
-router.use('/', resourceRoutes); // /e-master/resources/...
-router.use('/', studyRequirementRoutes); // /e-master/study-requirements/...
+router.use('/', authRoutes);
+router.use('/', userRoutes);
+router.use('/', aiRoutes);
+router.use('/', testRoutes);
+router.use('/', submissionRoutes);
+router.use('/', progressRoutes);
+router.use('/', reminderRoutes);
+router.use('/', placementTestRoutes); 
+router.use('/', resourceRoutes); 
+router.use('/', studyRequirementRoutes); 
+router.use('/', studyPlanRoutes);
 
 router.get('/', (req, res) => res.send('🌍 E-Master API Running!'));
 
