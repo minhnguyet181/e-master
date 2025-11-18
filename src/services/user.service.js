@@ -6,11 +6,15 @@ async function getById(id) {
   return User.findByPk(id);
 }
 
+async function getProfile(userId) {
+  return User.findByPk(userId);
+}
+
 async function updateProfile(userId, payload) {
   const user = await User.findByPk(userId);
   if (!user) throw new Error('User not found');
 
-  const allowed = ['username', 'goal', 'band_target', 'study_hours_per_day', 'reason', 'ai_recommendation'];
+  const allowed = ['username', 'goal', 'band_target', 'current_band', 'study_hours_per_day', 'reason', 'ai_recommendation'];
   const updates = {};
   allowed.forEach(k => { if (payload[k] !== undefined) updates[k] = payload[k]; });
 
@@ -37,8 +41,19 @@ async function submitLearningGoalGenerateAI(userId, input) {
   return aiResult;
 }
 
+async function saveAIRecommendation(userId, aiPlan) {
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error('User not found');
+  
+  const recommendation = typeof aiPlan === 'string' ? aiPlan : JSON.stringify(aiPlan);
+  await user.update({ ai_recommendation: recommendation });
+  return user.reload();
+}
+
 module.exports = {
   getById,
+  getProfile,
   updateProfile,
-  submitLearningGoalGenerateAI
+  submitLearningGoalGenerateAI,
+  saveAIRecommendation
 };

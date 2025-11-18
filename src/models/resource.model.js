@@ -48,9 +48,9 @@ Resource.init(
 
     // ========== Classification ==========
     resource_type: {
-      type: DataTypes.ENUM('article', 'video', 'exercise', 'tip', 'grammar_rule', 'vocabulary', 'template', 'example'),
+      type: DataTypes.ENUM('video', 'tip', 'grammar_rule', 'vocabulary', 'template', 'example'),
       allowNull: false,
-      comment: 'Loại tài liệu'
+      comment: 'Loại tài liệu: video, tip, grammar_rule, vocabulary, template, example'
     },
 
     skill: {
