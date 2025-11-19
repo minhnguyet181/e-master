@@ -12,6 +12,7 @@
 const PlacementTest = require('../models/placementTest.model');
 const User = require('../models/user.model');
 const { callGemini } = require('./ai.service');
+const { generateLearningPathFromBands } = require('./learningPath.service');
 
 /**
  * Helper: Parse JSON from AI response
@@ -159,12 +160,31 @@ async function submitPlacementTest(userId, testData) {
       user.current_band = assessment.assessed_band;
       await user.save();
       console.log(`✅ Updated user.current_band to ${assessment.assessed_band}`);
+      
+      // Tự động generate learning path nếu có target_band
+      if (user.band_target) {
+        console.log(`🎯 Auto-generating learning path from ${assessment.assessed_band} to ${user.band_target}...`);
+        try {
+          const pathResult = await generateLearningPathFromBands(userId, { autoGenerate: true });
+          if (pathResult.success) {
+            console.log(`✅ Learning path generated successfully!`);
+          } else {
+            console.warn(`⚠️  Learning path generation failed: ${pathResult.error}`);
+          }
+        } catch (pathError) {
+          console.error(`❌ Error auto-generating learning path: ${pathError.message}`);
+          // Không throw error, vì placement test đã thành công
+        }
+      } else {
+        console.log(`ℹ️  No target_band set. User can set target_band and generate learning path later.`);
+      }
     }
 
     return {
       success: true,
       placement_test: placementTest,
-      message: 'Placement test completed and band assessed!'
+      message: 'Placement test completed and band assessed!',
+      learning_path_generated: user && user.band_target ? true : false
     };
 
   } catch (error) {

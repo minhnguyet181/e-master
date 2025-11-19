@@ -112,76 +112,170 @@ exports.updateProfile = async (req, res) => {
 // Gửi thông tin học tập lên AI để tạo lộ trình
 exports.generateLearningPlan = async (req, res) => {
   try {
-    const decoded = req.user;
+    const token = req.headers.authorization?.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await UserService.getProfile(decoded.id);
 
-    let aiResult = null;
-    let planObj = null;
+    const aiPlan = await AIService.generateLearningPlan({
+      goal: user.goal,
+      band_target: user.band_target,
+      study_hours_per_day: user.study_hours_per_day,
+      reason: user.reason,
+    });
 
-    // Try to get AI plan, but fallback to default if AI fails
-    try {
-      aiResult = await AIService.generateLearningPlan(decoded.id, req.body || {});
-      planObj = typeof aiResult === 'string' ? (() => {
-        try { return JSON.parse(aiResult); } catch (e) { return null; }
-      })() : aiResult;
-    } catch (aiErr) {
-      console.warn('⚠️ AI generation failed:', aiErr.message);
-      // Fallback: create a basic plan structure
-      planObj = {
-        summary: 'Study plan generated with fallback (AI unavailable)',
-        duration_weeks: 8,
-        weekly_plan: [],
-        recommended_materials: [],
-        targetBand: user.band_target || '7.0',
-        recommended_band_bucket: '5.0-7.0',
-        recommended_band_value: 6.0
-      };
-    }
-
-    // Determine band to use for resources
-    let bandValue = null;
-    if (planObj && (planObj.targetBand || planObj.target_band || planObj.band_target)) {
-      bandValue = planObj.targetBand || planObj.target_band || planObj.band_target;
-    }
-    if (!bandValue) bandValue = user.band_target || user.current_band;
-
-    // Normalize to number if possible
-    const numericMatch = String(bandValue || '').match(/(\d+\.?\d*)/);
-    const numericBand = numericMatch ? parseFloat(numericMatch[1]) : null;
-
-    const bucket = numericBand ? getBandBucket(numericBand) : null;
-    const representative = bucket ? representativeBandForBucket(bucket) : (numericBand || null);
-
-    // Fetch resources appropriate for this representative band value
-    let resources = { success: false, resources: [] };
-    try {
-      if (representative) {
-        resources = await ResourceService.getResourcesByBand({ band: String(representative) }, 10, 0);
-      } else {
-        // fallback: use user's resources
-        resources = await ResourceService.getResourcesForUser(decoded.id, { useTargetBand: true }, 10);
-      }
-    } catch (resErr) {
-      console.warn('⚠️ Failed to fetch resources for study plan:', resErr.message);
-      resources = { success: false, error: resErr.message, resources: [] };
-    }
-
-    // Build response
-    const responsePayload = {
-      success: true,
-      plan: planObj || aiResult || { summary: 'Study plan (AI unavailable)' },
-      band_bucket: bucket,
-      representative_band: representative,
-      resources: resources.resources || [],
-      resources_meta: {
-        total: resources.total || (resources.resources ? resources.resources.length : 0),
-        filter_applied: resources.filter_applied || {}
-      }
-    };
-
-    return handleResponse(res, responsePayload, 'AI learning plan generated');
+    await UserService.saveAIRecommendation(user.id, aiPlan);
+    handleResponse(res, JSON.parse(aiPlan), 'AI learning plan generated');
   } catch (err) {
-    console.error('❌ generateLearningPlan error:', err.message);
     handleError(res, err);
+  }
+};
+
+/**
+ * Tìm kiếm users theo band
+ * GET /e-master/user/search-by-band?band=5&bandType=current&exactMatch=false&limit=20&offset=0
+ */
+exports.searchUsersByBand = async (req, res) => {
+  try {
+    const {
+      band,
+      bandType = 'both', // 'current', 'target', or 'both'
+      exactMatch = 'false',
+      limit = 50,
+      offset = 0
+    } = req.query;
+
+    if (!band) {
+      return res.status(400).json({
+        success: false,
+        error: 'Band parameter is required'
+      });
+    }
+
+    const result = await UserService.searchUsersByBand(
+      {
+        band,
+        bandType,
+        exactMatch: exactMatch === 'true'
+      },
+      parseInt(limit),
+      parseInt(offset)
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error('❌ Error in searchUsersByBand:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Tìm kiếm users trong khoảng band
+ * GET /e-master/user/search-by-band-range?minBand=5&maxBand=6&bandType=both&limit=20&offset=0
+ */
+exports.searchUsersByBandRange = async (req, res) => {
+  try {
+    const {
+      minBand,
+      maxBand,
+      bandType = 'both',
+      limit = 50,
+      offset = 0
+    } = req.query;
+
+    if (!minBand || !maxBand) {
+      return res.status(400).json({
+        success: false,
+        error: 'minBand and maxBand parameters are required'
+      });
+    }
+
+    const result = await UserService.searchUsersByBandRange(
+      {
+        minBand,
+        maxBand,
+        bandType
+      },
+      parseInt(limit),
+      parseInt(offset)
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error('❌ Error in searchUsersByBandRange:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Generate learning path từ current_band đến target_band
+ * POST /e-master/user/generate-learning-path
+ */
+exports.generateLearningPath = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+    
+    const LearningPathService = require('../services/learningPath.service');
+    
+    const result = await LearningPathService.generateLearningPathFromBands(userId);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.status(200).json(result);
+    
+  } catch (error) {
+    console.error('❌ Error in generateLearningPath:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get learning path của user
+ * GET /e-master/user/learning-path
+ */
+exports.getLearningPath = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+    
+    const LearningPathService = require('../services/learningPath.service');
+    
+    const result = await LearningPathService.getLearningPath(userId);
+    
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    
+    return res.status(200).json(result);
+    
+  } catch (error) {
+    console.error('❌ Error in getLearningPath:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 };
