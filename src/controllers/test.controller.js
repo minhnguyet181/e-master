@@ -1,4 +1,3 @@
-// src/controllers/test.controller.js
 const TestService = require('../services/test.service');
 const { handleResponse, handleError } = require('./base.controller');
 

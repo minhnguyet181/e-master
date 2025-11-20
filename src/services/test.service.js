@@ -8,7 +8,11 @@ class TestService {
   }
 
   static async getTestsByType(skill) {
-    return await Test.findAll({ where: { test_type: skill } });
+    return await Test.findAll({
+    where: { test_type: skill },
+    attributes: ['description'], // chỉ lấy description
+  });
+
   }
 
   static async getTest(id) {
