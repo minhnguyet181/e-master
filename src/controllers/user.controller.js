@@ -6,6 +6,7 @@ const { getBandBucket, representativeBandForBucket } = require('../utils/studyPl
 const { handleResponse, handleError } = require('./base.controller');
 const UserCourse = require('../models/userCourse.model');
 const User = require('../models/user.model');
+const jwt = require('jsonwebtoken');
 exports.getProfile = async (req, res) => {
   try {
     const decoded = req.user;
@@ -124,7 +125,7 @@ exports.generateLearningPlan = async (req, res) => {
     });
 
     await UserService.saveAIRecommendation(user.id, aiPlan);
-    handleResponse(res, JSON.parse(aiPlan), 'AI learning plan generated');
+  handleResponse(res, aiPlan, 'AI learning plan generated'); 
   } catch (err) {
     handleError(res, err);
   }
@@ -222,10 +223,6 @@ exports.searchUsersByBandRange = async (req, res) => {
   }
 };
 
-/**
- * Generate learning path từ current_band đến target_band
- * POST /e-master/user/generate-learning-path
- */
 exports.generateLearningPath = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];

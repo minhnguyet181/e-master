@@ -196,9 +196,9 @@ Return ONLY the JSON object. No other text.`;
   if (GEMINI_KEY) raw = await callGemini(prompt, 1200);
   else if (HF_TOKEN) raw = await callHuggingFaceText('google/flan-t5-large', prompt);
   else throw new Error('No AI provider configured');
+  const cleaned = raw.replace(/```json|```/g, "").trim();
 
-  const parsed = tryParseJSONFromText(raw);
-  return parsed;
+  return cleaned;
 }
 
 /* ---------- Grade writing: returns JSON ---------- */
